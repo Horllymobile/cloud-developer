@@ -14,7 +14,7 @@ export const config = {
     aws_media_bucket: process.env.AWS_BUCKET,
   },
   jwt: {
-    secret: ""
+    secret: "pressCTRL+Ctostopserver"
   },
   prod: {
     username: "",
