@@ -1,16 +1,16 @@
 import * as AWS from 'aws-sdk'
 import * as AWSXRay from 'aws-xray-sdk'
-import { DeleteItemInput, DocumentClient, GetItemInput } from 'aws-sdk/clients/dynamodb'
+import { DocumentClient } from 'aws-sdk/clients/dynamodb'
 import { createLogger } from '../utils/logger'
 import { TodoItem } from '../models/TodoItem'
-// import { TodoUpdate } from '../models/TodoUpdate';
-import { UpdateTodoRequest } from '../requests/UpdateTodoRequest'
+import { TodoUpdate } from '../models/TodoUpdate';
 
 const XAWS = AWSXRay.captureAWS(AWS)
 
 const logger = createLogger('TodosAccess')
 
 // TODO: Implement the dataLayer logic
+const todosByUserIndex = process.env.TODOS_CREATED_AT_INDEX
 
 export class TodosAccess {
     constructor(
@@ -37,93 +37,75 @@ export class TodosAccess {
         return items as TodoItem[]
     }
 
-    async getTodo(todoId: string, userId: string): Promise<TodoItem> {
-        const params: GetItemInput = {
-            TableName: this.todosTable,
-            Key: {
-                "todoId": {
-                    "S": todoId
-                },
-                "userId": {
-                    "S": userId
+    async getUserTodo(userId: string): Promise<TodoItem> {
+        const result = await this.docClient
+            .query({
+                TableName: this.todosTable,
+                IndexName: todosByUserIndex,
+                KeyConditionExpression: 'userId = :userId',
+                ExpressionAttributeValues: {
+                    ':userId': userId
                 }
-            }
-        }
-        const item = await this.docClient.get(params).promise();
-        logger.info('Getting Todo', {
-            item
-        })
+            }).promise()
 
-        return 
+        return result.Items as unknown as TodoItem
     }
 
-    async createTodo(todo: TodoItem): Promise<TodoItem> {
-        logger.info('Created Todo', {
-            todo
-        })
+    async createTodo(todo: TodoItem): Promise<void> {
         await this.docClient.put({
             TableName: this.todosTable,
             Item: todo
-        }).promise()
-        return todo
+        }).promise();
     }
 
-    async updateTodo(todo: UpdateTodoRequest, todoId: string, userId: string) {
-        const item = await this.getTodo(todoId, userId);
-        if (!item) throw new Error("No Item");
-        logger.error('Todo not found', {
-            todoId,
-            userId
-        })
-        const params = {
+    async updateTodo(
+        todo: TodoUpdate,
+        todoId: string,
+        userId: string): Promise<TodoItem> {
+        const res = await this.docClient.update({
             TableName: this.todosTable,
-            Key: {
-                "todoId": {
-                    "S": todoId
-                },
-                "userId": {
-                    "S": userId
-                }
+            Key: { userId, todoId },
+            UpdateExpression: 'set #name = :name, dueDate = :dueDate, done = :done',
+            ExpressionAttributeNames: {
+                '#name': 'name'
             },
-            UpdateExpression: "set name = :name, dueDate = :dueDate, done = :done",
             ExpressionAttributeValues: {
-                ":name": todo.name,
-                ":dueDate": todo.dueDate,
-                ":done": todo.done
-            }
-        };
-        logger.info('Todo Updated', {
-            todoId,
-            userId
-        })
-        await this.docClient.update(params).promise()
-        return todo
+                ':name': todo.name,
+                ':dueDate': todo.dueDate,
+                ':done': todo.done
+            },
+            ReturnValues: "ALL_NEW"
+        }).promise();
+        return res.Attributes as TodoItem
     }
 
     async deleteTodo(todoId: string, userId: string) {
-        const item = await this.getTodo(todoId, userId);
-        logger.error('Todo not found', {
-            todoId,
-            userId
-        })
-        if (!item) throw new Error("No Item");
+        const result = await this.docClient
+            .delete({
+                TableName: this.todosTable,
+                Key: { userId, todoId },
+                ReturnValues: 'ALL_OLD',
+            }).promise()
 
-        const params: DeleteItemInput = {
-            TableName: this.todosTable,
-            Key: {
-                "todoId": {
-                    "S": todoId
+        return result.Attributes as TodoItem
+    }
+
+    async updateTodoItemAttachment(
+        userId: string,
+        todoId: string,
+        attachmentUrl: string
+    ): Promise<void> {
+        await this.docClient
+            .update({
+                TableName: this.todosTable,
+                Key: { userId, todoId },
+                UpdateExpression: 'set attachmentUrl = :attachmentUrl',
+                ExpressionAttributeValues: {
+                    ':attachmentUrl': attachmentUrl
                 },
-                "userId": {
-                    "S": userId
-                }
-            }
-        }
-        logger.error('Todo deleted', {
-            todoId,
-            userId
-        })
-        return await this.docClient.delete(params).promise();
+            }).promise()
+
+        return
     }
 }
 

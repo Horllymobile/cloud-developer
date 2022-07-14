@@ -6,27 +6,20 @@ plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
   - serverless-plugin-tracing
-  - serverless-reqvalidator-plugin
-  - serverless-aws-documentation
-  - serverless-dynamodb-local
-  - serverless-offline
-  - serverless-plugin-canary-deployments
 
 provider:
   name: aws
   runtime: nodejs12.x
+  lambdaHashingVersion: "20201221"
 
-  stage: "dev"
-  region: "us-east-1"
-
-  # stage: ${opt:stage, 'dev'}
-  # region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+  profile: ${opt:profile, 'serverless-admin'}
 
   tracing:
     lambda: true
     apiGateway: true
 
-  # Use these variables in the functions and resouorces section below. For example,
   environment:
     TODOS_TABLE: Todos-${self:provider.stage}
     TODOS_CREATED_AT_INDEX: CreatedAtIndex
@@ -35,7 +28,6 @@ provider:
     AUTH_JWKS_URL: "https://horllymobile.us.auth0.com/.well-known/jwks.json"
 
   logs:
-    # Enable API Gateway logs
     restApi: true
 
   iam:
@@ -45,19 +37,17 @@ provider:
           Action:
             - xray:PutTelemetryRecords
             - xray:PutTraceSegments
+            - xray:GetSamplingRules
+            - xray:GetSamplingTargets
+            - xray:GetSamplingStatisticSummaries
+            - xray:BatchGetTraces
+            - xray:GetServiceGraph
+            - xray:GetTraceGraph
+            - xray:GetTraceSummaries
+            - xray:GetGroups
+            - xray:GetGroup
           Resource: "*"
-        - Effect: Allow
-          Action:
-            - dynamodb:Scan
-            - dynamodb:PutItem
-            - dynamodb:GetItem
-            - dynamodb:DeleteItem
-          Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
-        - Effect: Allow
-          Action:
-            - s3:PutObject
-            - s3:GetObject
-          Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET}/*
+
 custom:
   topicName: todoTopic-${self:provider.stage}
   serverless-offline:
@@ -77,7 +67,7 @@ custom:
         description: Serverless application for todos
 
 functions:
-  Authorizer:
+  Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
 
   GetTodos:
@@ -87,14 +77,18 @@ functions:
           method: get
           path: todos
           cors: true
-          authorizer: Authorizer
+          authorizer: Auth
           reqValidatorName: "RequestBodyValidator"
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - dynamodb:Scan
-        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
+          - s3:GetObject
+        Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET}/*
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_CREATED_AT_INDEX}
 
   # TODO: Configure this function -
   # Provide iamRoleStatements property. Decide the Actions and AWS Resource.
@@ -107,13 +101,15 @@ functions:
           method: post
           path: todos
           cors: true
-          authorizer: Authorizer
+          authorizer: Auth
           reqValidatorName: "RequestBodyValidator"
+          request:
+            schemas:
+            application/json: ${file(models/create-todo-model.json)}
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - dynamodb:Scan
           - dynamodb:PutItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
 
@@ -123,15 +119,17 @@ functions:
       - http:
           method: patch
           cors: true
-          authorizer: Authorizer
+          authorizer: Auth
           path: todos/{todoId}
           reqValidatorName: "RequestBodyValidator"
+          request:
+            schemas:
+            application/json: ${file(models/update-todo-model.json)}
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - dynamodb:Scan
-          - dynamodb:PutItem
+          - dynamodb:UpdateItem
           - dynamodb:GetItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
 
@@ -141,16 +139,15 @@ functions:
       - http:
           method: delete
           cors: true
-          authorizer: Authorizer
+          authorizer: Auth
           path: todos/{todoId}
           reqValidatorName: "RequestBodyValidator"
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - dynamodb:Scan
-          - dynamodb:GetItem
           - dynamodb:DeleteItem
+          - dynamodb:GetItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
 
   GenerateUploadUrl:
@@ -159,15 +156,18 @@ functions:
       - http:
           method: post
           cors: true
-          authorizer: Authorizer
+          authorizer: Auth
           path: todos/{todoId}/attachment
           reqValidatorName: RequestBodyValidator
     iamRoleStatements:
       - Effect: Allow
         Action:
-          - dynamodb:Scan
+          - s3:PutObject
+        Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET}/*
+      - Effect: Allow
+        Action:
+          - dynamodb:UpdateItem
           - dynamodb:GetItem
-          - dynamodb:DeleteItem
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}
 
 resources:
@@ -198,7 +198,6 @@ resources:
             KeyType: HASH
           - AttributeName: todoId
             KeyType: RANGE
-        BillingMode: PAY_PER_REQUEST
         TableName: ${self:provider.environment.TODOS_TABLE}
         LocalSecondaryIndexes:
           - IndexName: ${self:provider.environment.TODOS_CREATED_AT_INDEX}
@@ -208,16 +207,8 @@ resources:
               - AttributeName: createdAt
                 KeyType: RANGE
             Projection:
-              ProjectionType: ALL # What attributes will be copied to an index
-
-    RequestBodyValidator:
-      Type: AWS::ApiGateway::RequestValidator
-      Properties:
-        Name: "request-body-validator"
-        RestApiId:
-          Ref: ApiGatewayRestApi
-        ValidateRequestBody: true
-        ValidateRequestParameters: false
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
 
     AttachmentsBucket:
       Type: AWS::S3::Bucket

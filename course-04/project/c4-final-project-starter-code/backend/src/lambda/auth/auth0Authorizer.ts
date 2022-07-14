@@ -1,4 +1,4 @@
-import { CustomAuthorizerResult } from 'aws-lambda'
+import { CustomAuthorizerEvent, CustomAuthorizerResult } from 'aws-lambda'
 import 'source-map-support/register'
 
 import { verify, decode } from 'jsonwebtoken'
@@ -18,7 +18,7 @@ logger.info(`JWKSURL: ${jwksUrl}`)
 let cert: string
 
 export const handler = async (
-  event: any
+  event: CustomAuthorizerEvent
 ): Promise<CustomAuthorizerResult> => {
   logger.info('Authorizing a user', event.authorizationToken)
   try {

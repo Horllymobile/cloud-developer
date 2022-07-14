@@ -1,20 +1,31 @@
 import { TodosAccess } from './todosAcess'
-import { createAttachmentPresignedUrl } from './attachmentUtils';
 import { TodoItem } from '../models/TodoItem'
 import { CreateTodoRequest } from '../requests/CreateTodoRequest'
 import { UpdateTodoRequest } from '../requests/UpdateTodoRequest'
-// import { createLogger } from '../utils/logger'
+import { createLogger } from '../utils/logger'
 import * as uuid from 'uuid'
+import CustomError from '../utils/error';
+import { TodoUpdate } from '../models/TodoUpdate';
+import { getAttachmentUrl } from './attachmentUtils'
+
 // import * as createError from 'http-errors'
 // import { parseUserId } from '../auth/utils'
 
-const imagesBucketName = process.env.IMAGES_S3_BUCKET
 
 const todoAccess = new TodosAccess();
 
+const logger = createLogger('Todos')
+
 // TODO: Implement businessLogic
 export async function getTodosForUser(userId: string): Promise<TodoItem[]> {
-  return todoAccess.getAllTodos(userId);
+  try {
+    const result = await todoAccess.getAllTodos(userId);
+    logger.info(`TODO items of user fetched: ${userId}`, JSON.stringify(result))
+    return result;
+  } catch (error) {
+      logger.error('Get Todo Error', error)
+      throw new CustomError(error.message, 500)
+  }
 }
 
 
@@ -22,34 +33,99 @@ export async function createTodo(
   createTodoRequest: CreateTodoRequest,
   userId: string
 ): Promise<TodoItem> {
+  const todoId = uuid.v4()
+  try {
 
-  const itemId = uuid.v4()
+    const todoItem: TodoItem = {
+      todoId,
+      userId,
+      createdAt: new Date().toISOString(),
+      done: false,
+      attachmentUrl: null,
+      ...createTodoRequest,
+    }
 
-  return await todoAccess.createTodo({
-    ...createTodoRequest,
-    todoId: itemId,
-    userId: userId,
-    createdAt: new Date().toISOString(),
-    done: false,
-    attachmentUrl: `https://${imagesBucketName}.s3.amazonaws.com/${itemId}`
-  })
+    await todoAccess.createTodo(todoItem)
+    logger.info('Todo created success fully', todoItem)
+    return todoItem;
+  } catch (error) {
+    throw new CustomError(error.message, 500)
+  }
 }
 
 export async function updateTodo(
   updateTodo: UpdateTodoRequest,
   todoId: string,
   userId: string,
-) {
-  return await todoAccess.updateTodo(updateTodo, todoId, userId)
+): Promise<TodoItem> {
+  try {
+
+    const item = await todoAccess.updateTodo(updateTodo as TodoUpdate, todoId, userId)
+
+    logger.info('TODO updated successfully', {
+      userId,
+      todoId,
+      updated: updateTodo
+    })
+    return item
+    
+  } catch (error) {
+    logger.error(error)
+    throw new CustomError(error.message, 500)
+  }
 }
 
 export async function deleteTodo(
   todoId: string,
   userId: string,
 ) {
-  return await todoAccess.deleteTodo(todoId, userId)
+  try {
+
+    const item = await todoAccess.deleteTodo(todoId, userId)
+    logger.info('TODO deleted successfully', {
+      userId,
+      todoId
+    })
+
+    return item
+  } catch (error) {
+    logger.error(error)
+    throw new CustomError(error.message, 500)
+  }
 }
 
-export async function getUploadUrl(todoId: string) {
-  return createAttachmentPresignedUrl(todoId);
+export async function generateSignedUrl(attachmentId: string): Promise<string> {
+  try {
+    logger.info('Generating Signed URL')
+    const uploadUrl = await getAttachmentUrl(attachmentId)
+    logger.info('Signed URL generated')
+
+    return uploadUrl
+  } catch (error) {
+    logger.error(error)
+    throw new CustomError(error.message, 500)
+  }
+}
+
+export async function updateAttachmentUrl(
+  userId: string,
+  todoId: string,
+  attachmentId: string
+): Promise<void> {
+  try {
+
+    const attachmentUrl = getAttachmentUrl(attachmentId)
+    await todoAccess.updateTodoItemAttachment(userId, todoId, attachmentUrl)
+
+    logger.info(
+      'AttachmentURL updated successfully',{
+        userId,
+        todoId
+      }
+    )
+    return
+  } catch (error) {
+    logger.error(error)
+    throw new CustomError(error.message, 500)
+  }
 }
