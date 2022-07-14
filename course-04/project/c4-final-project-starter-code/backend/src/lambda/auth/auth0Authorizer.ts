@@ -11,10 +11,9 @@ import { JwtPayload } from '../../auth/JwtPayload';
 
 const logger = createLogger('auth')
 
-// TODO: Provide a URL that can be used to download a certificate that can be used
-// to verify JWT token signature.
-// To get this URL you need to go to an Auth0 page -> Show Advanced Settings -> Endpoints -> JSON Web Key Set
 const jwksUrl = process.env.AUTH_JWKS_URL
+
+logger.info(`JWKSURL: ${jwksUrl}`)
 
 let cert: string
 
@@ -61,11 +60,12 @@ export const handler = async (
 async function verifyToken(authHeader: string): Promise<JwtPayload> {
   const token = getToken(authHeader)
   const jwt: Jwt = decode(token, { complete: true }) as Jwt
-  // TODO: Implement token verification
-  // You should implement it similarly to how it was implemented for the exercise for the lesson 5
-  // You can read more about how to do this here: https://auth0.com/blog/navigating-rs256-and-jwks/
-  const cert = await getSignKey(jwt.header.kid);
+  logger.info(`decoded jwt: ${jwt}`)
 
+  const keyId = jwt.header.kid
+  logger.info(`KEYID: ${jwt}`)
+
+  const cert = await getSignKey(keyId);
   return verify(token, cert, { algorithms: ['RS256'] }) as JwtPayload;
 }
 
@@ -81,15 +81,13 @@ function getToken(authHeader: string): string {
   return token
 }
 
-async function getCert(url: string) {
-  return await (await Axios.get(url)).data.keys;
-}
-
 
 
 async function getSignKey(keyId: string) {
   if (cert) return cert;
-  const keys = await getCert(jwksUrl);
+  const response = await Axios.get(jwksUrl);
+  const keys = response.data.keys;
+  if (!keys || !keys.length) throw new Error('No JWKS keys found')
 
   logger.info('KEYS', keys);
 
@@ -97,7 +95,6 @@ async function getSignKey(keyId: string) {
     key.use === 'sig' &&
     key.kty === 'RSA' &&
     key.alg === 'RS256' &&
-    keyId === key.kid,
     key.n &&
     key.e &&
     key.kid === keyId &&
@@ -105,19 +102,18 @@ async function getSignKey(keyId: string) {
     key.x5c.length
   ));
 
-  if (!signingKeys.length) throw new Error('No JWKS signing keys found')
+  if (!signingKeys.length) throw new Error('No signing keys found')
 
   const matched = signingKeys[0]
+  cert = getPemFromCertificate(signingKeys.x5c[0])
 
   logger.info('PEM CERTIFICATE', matched.x5c[0]);
-
-  cert = getPemFromCertificate(signingKeys.x5c[0])
   return cert;
 }
 
 function getPemFromCertificate(cert: string): string {
-  let pemCert = cert.match(/.{1,64}/g).join('\n')
-  return `-----BEGIN CERTIFICATE-----\n${pemCert}\n-----END CERTIFICATE-----\n`
+  let pem = cert.match(/.{1,64}/g).join('\n')
+  return `-----BEGIN CERTIFICATE-----\n${pem}\n-----END CERTIFICATE-----\n`
 }
 
 

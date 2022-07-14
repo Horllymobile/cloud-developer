@@ -32,7 +32,7 @@ provider:
     TODOS_CREATED_AT_INDEX: CreatedAtIndex
     ATTACHMENT_S3_BUCKET: serverless-my-todo-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
-    AUTH_JWKS_URL: https://horllymobile.us.auth0.com/.well-known/jwks.json
+    AUTH_JWKS_URL: "https://horllymobile.us.auth0.com/.well-known/jwks.json"
 
   logs:
     # Enable API Gateway logs
