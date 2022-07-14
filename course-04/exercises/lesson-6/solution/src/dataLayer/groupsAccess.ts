@@ -6,7 +6,7 @@ const XAWS = AWSXRay.captureAWS(AWS)
 
 import { Group } from '../models/Group'
 
-export class GroupAccess {
+export class GroupAccess { 
 
   constructor(
     private readonly docClient: DocumentClient = createDynamoDBClient(),

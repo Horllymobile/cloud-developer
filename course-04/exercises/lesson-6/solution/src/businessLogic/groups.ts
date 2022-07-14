@@ -14,7 +14,7 @@ export async function getAllGroups(): Promise<Group[]> {
 export async function createGroup(
   createGroupRequest: CreateGroupRequest,
   jwtToken: string
-): Promise<Group> {
+): Promise<Group> { 
 
   const itemId = uuid.v4()
   const userId = getUserId(jwtToken)
