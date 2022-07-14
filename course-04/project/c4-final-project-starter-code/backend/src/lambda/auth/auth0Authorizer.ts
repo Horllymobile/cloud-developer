@@ -7,13 +7,16 @@ import Axios from 'axios'
 import { Jwt } from '../../auth/Jwt'
 import { JwtPayload } from '../../auth/JwtPayload';
 
+
+
 const logger = createLogger('auth')
 
 // TODO: Provide a URL that can be used to download a certificate that can be used
 // to verify JWT token signature.
 // To get this URL you need to go to an Auth0 page -> Show Advanced Settings -> Endpoints -> JSON Web Key Set
-const jwksUrl = 'https://horllymobile.us.auth0.com/.well-known/jwks.json'
+const jwksUrl = process.env.AUTH_JWKS_URL
 
+let cert: string
 
 export const handler = async (
   event: any
@@ -61,7 +64,7 @@ async function verifyToken(authHeader: string): Promise<JwtPayload> {
   // TODO: Implement token verification
   // You should implement it similarly to how it was implemented for the exercise for the lesson 5
   // You can read more about how to do this here: https://auth0.com/blog/navigating-rs256-and-jwks/
-  const cert = await getSignKey(jwt, jwksUrl);
+  const cert = await getSignKey(jwt.header.kid);
 
   return verify(token, cert, { algorithms: ['RS256'] }) as JwtPayload;
 }
@@ -82,14 +85,39 @@ async function getCert(url: string) {
   return await (await Axios.get(url)).data.keys;
 }
 
-async function getSignKey(jwt, url) {
-  const keys = await getCert(url)
+
+
+async function getSignKey(keyId: string) {
+  if (cert) return cert;
+  const keys = await getCert(jwksUrl);
+
   logger.info('KEYS', keys);
 
-  const find = keys.find(c => jwt.header.kid === c.kid);
-  logger.info('FIND', find);
+  const signingKeys = keys.filter(key => (
+    key.use === 'sig' &&
+    key.kty === 'RSA' &&
+    key.alg === 'RS256' &&
+    keyId === key.kid,
+    key.n &&
+    key.e &&
+    key.kid === keyId &&
+    key.x5c &&
+    key.x5c.length
+  ));
 
-  logger.info('CERTIFICATE', find.x5c[0]);
+  if (!signingKeys.length) throw new Error('No JWKS signing keys found')
 
-  return find.x5c[0];
+  const matched = signingKeys[0]
+
+  logger.info('PEM CERTIFICATE', matched.x5c[0]);
+
+  cert = getPemFromCertificate(signingKeys.x5c[0])
+  return cert;
 }
+
+function getPemFromCertificate(cert: string): string {
+  let pemCert = cert.match(/.{1,64}/g).join('\n')
+  return `-----BEGIN CERTIFICATE-----\n${pemCert}\n-----END CERTIFICATE-----\n`
+}
+
+
