@@ -60,10 +60,9 @@ export const handler = async (
 async function verifyToken(authHeader: string): Promise<JwtPayload> {
   const token = getToken(authHeader)
   const jwt: Jwt = decode(token, { complete: true }) as Jwt
-  logger.info(`decoded jwt: ${jwt}`)
 
   const keyId = jwt.header.kid
-  logger.info(`KEYID: ${jwt}`)
+  logger.info(`KEYID: ${keyId}`)
 
   const cert = await getSignKey(keyId);
   return verify(token, cert, { algorithms: ['RS256'] }) as JwtPayload;
@@ -86,10 +85,12 @@ function getToken(authHeader: string): string {
 async function getSignKey(keyId: string) {
   if (cert) return cert;
   const response = await Axios.get(jwksUrl);
-  const keys = response.data.keys;
-  if (!keys || !keys.length) throw new Error('No JWKS keys found')
 
+  const keys = JSON.parse(response.data).keys;
+  
   logger.info('KEYS', keys);
+
+  if (!keys || !keys.length) throw new Error('No JWKS keys found')
 
   const signingKeys = keys.filter(key => (
     key.use === 'sig' &&
