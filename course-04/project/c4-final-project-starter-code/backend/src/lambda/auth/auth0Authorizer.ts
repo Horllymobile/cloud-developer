@@ -86,8 +86,8 @@ async function getSignKey(keyId: string) {
   if (cert) return cert;
   const response = await Axios.get(jwksUrl);
 
-  const keys = JSON.parse(response.data).keys;
-  
+  const keys = response.data.keys;
+
   logger.info('KEYS', keys);
 
   if (!keys || !keys.length) throw new Error('No JWKS keys found')
@@ -97,15 +97,18 @@ async function getSignKey(keyId: string) {
     key.kty === 'RSA' &&
     key.alg === 'RS256' &&
     key.n &&
-    key.e &&
+    key.e && 
     key.kid === keyId &&
     key.x5c &&
     key.x5c.length
   ));
 
+  logger.info('Signing Keys', signingKeys);
+
   if (!signingKeys.length) throw new Error('No signing keys found')
 
   const matched = signingKeys[0]
+
   cert = getPemFromCertificate(signingKeys.x5c[0])
 
   logger.info('PEM CERTIFICATE', matched.x5c[0]);
