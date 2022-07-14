@@ -8,7 +8,7 @@ const s3 = new XAWS.S3({
     signatureVersion: 'v4'
 })
 
-const imagesBucketName = process.env.IMAGES_S3_BUCKET
+const imagesBucketName = process.env.ATTACHMENT_S3_BUCKET
 const urlExpiration = process.env.SIGNED_URL_EXPIRATION
 
 
