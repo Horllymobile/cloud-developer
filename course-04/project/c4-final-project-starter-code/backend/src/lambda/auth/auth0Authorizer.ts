@@ -103,15 +103,14 @@ async function getSignKey(keyId: string) {
     key.x5c.length
   ));
 
-  logger.info('Signing Keys', signingKeys);
+  // logger.info('Signing Keys', signingKeys[0]);
 
   if (!signingKeys.length) throw new Error('No signing keys found')
 
-  const matched = signingKeys["0"]
+  const matched = signingKeys[0]
+  cert = getPemFromCertificate(matched.x5c[0])
 
-  cert = getPemFromCertificate(signingKeys.x5c[0])
-
-  logger.info('PEM CERTIFICATE', matched.x5c[0]);
+  logger.info('PEM CERTIFICATE', cert);
   return cert;
 }
 
