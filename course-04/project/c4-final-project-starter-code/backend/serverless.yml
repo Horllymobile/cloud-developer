@@ -77,7 +77,6 @@ functions:
           path: todos
           cors: true
           authorizer: Auth
-          reqValidatorName: "RequestBodyValidator"
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -101,7 +100,6 @@ functions:
           path: todos
           cors: true
           authorizer: Auth
-          reqValidatorName: "RequestBodyValidator"
           request:
             schemas:
             application/json: ${file(models/create-todo-model.json)}
@@ -120,7 +118,6 @@ functions:
           cors: true
           authorizer: Auth
           path: todos/{todoId}
-          reqValidatorName: "RequestBodyValidator"
           request:
             schemas:
             application/json: ${file(models/update-todo-model.json)}
@@ -140,7 +137,6 @@ functions:
           cors: true
           authorizer: Auth
           path: todos/{todoId}
-          reqValidatorName: "RequestBodyValidator"
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -157,7 +153,6 @@ functions:
           cors: true
           authorizer: Auth
           path: todos/{todoId}/attachment
-          reqValidatorName: RequestBodyValidator
     iamRoleStatements:
       - Effect: Allow
         Action:
