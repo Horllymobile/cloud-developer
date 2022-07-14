@@ -107,7 +107,7 @@ async function getSignKey(keyId: string) {
 
   if (!signingKeys.length) throw new Error('No signing keys found')
 
-  const matched = signingKeys[0]
+  const matched = signingKeys["0"]
 
   cert = getPemFromCertificate(signingKeys.x5c[0])
 
