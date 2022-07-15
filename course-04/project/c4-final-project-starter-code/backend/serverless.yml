@@ -6,6 +6,8 @@ plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
   - serverless-plugin-tracing
+  - serverless-aws-documentation
+  - serverless-reqvalidator-plugin
 
 provider:
   name: aws
@@ -64,6 +66,15 @@ custom:
         version: v1.0.0
         title: Udagram API
         description: Serverless application for todos
+    
+    models:
+      - name: CreateTodoModel
+        contentType: application/json
+        schema: ${file(models/create-todo-model.json)}
+      
+      - name: UpdateTodoModel
+        contentType: application/json
+        schema: ${file(models/update-todo-model.json)}
 
 functions:
   Auth:
@@ -100,9 +111,11 @@ functions:
           path: todos
           cors: true
           authorizer: Auth
-          request:
-            schemas:
-            application/json: ${file(models/create-todo-model.json)}
+          reqValidatorName: RequestBodyValidator
+          requestBody:
+              description: Create todo
+          requestModels:
+              application/json: CreateTodoModel
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -115,12 +128,14 @@ functions:
     events:
       - http:
           method: patch
+          path: todos/{todoId}
           cors: true
           authorizer: Auth
-          path: todos/{todoId}
-          request:
-            schemas:
-            application/json: ${file(models/update-todo-model.json)}
+          reqValidatorName: RequestBodyValidator
+          requestBody:
+              description: Update todo
+          requestModels:
+              application/json: UpdateTodoModel
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -176,6 +191,15 @@ resources:
         ResponseType: DEFAULT_4XX
         RestApiId:
           Ref: ApiGatewayRestApi
+
+    RequestBodyValidator:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        Name: "request-body-validator"
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
 
     TodosTable:
       Type: AWS::DynamoDB::Table
