@@ -14,7 +14,12 @@ export const handler = middy(
   async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     logger.info('Creating TODO item', { event })
     try {
-      const newTodo: CreateTodoRequest = JSON.parse(event.body)
+      const newTodo: CreateTodoRequest = JSON.parse(event.body);
+
+      if (!newTodo.name && !newTodo.dueDate) {
+        throw new Error("Data is required");
+      }
+
       const userId = getUserId(event);
     
       const todo = await createTodo(newTodo, userId);
