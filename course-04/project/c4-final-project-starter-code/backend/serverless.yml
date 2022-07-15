@@ -1,6 +1,7 @@
 org: horllymobile
 app: serverless-todo
 service: serverless-todo-app
+frameworkVersion: '3'
 
 plugins:
   - serverless-webpack
@@ -12,7 +13,6 @@ plugins:
 provider:
   name: aws
   runtime: nodejs12.x
-  lambdaHashingVersion: "20201221"
 
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
@@ -113,11 +113,6 @@ functions:
           cors: true
           authorizer: Auth
           reqValidatorName: "RequestBodyValidator"
-          documentation:
-            summary: Create todo
-            description: Create tod
-            requestModels:
-              "application/json": CreateTodoModel
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -134,11 +129,6 @@ functions:
           cors: true
           authorizer: Auth
           reqValidatorName: "RequestBodyValidator"
-          documentation:
-            summary: Update todo
-            description: Update todo
-            requestModels:
-              "application/json": UpdateTodoModel
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -155,6 +145,7 @@ functions:
           cors: true
           authorizer: Auth
           path: todos/{todoId}
+          reqValidatorName: "RequestBodyValidator"
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -171,6 +162,7 @@ functions:
           cors: true
           authorizer: Auth
           path: todos/{todoId}/attachment
+          reqValidatorName: "RequestBodyValidator"
     iamRoleStatements:
       - Effect: Allow
         Action:
