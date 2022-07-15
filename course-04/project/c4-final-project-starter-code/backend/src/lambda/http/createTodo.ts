@@ -6,22 +6,15 @@ import { CreateTodoRequest } from '../../requests/CreateTodoRequest'
 import { getUserId } from '../utils'
 import { createTodo } from '../../helpers/todos'
 import { createLogger } from '../../utils/logger'
-import Ajv from 'ajv'
 
-const ajv = new Ajv()
+
 const logger = createLogger('createTodo')
 
 export const handler = middy(
   async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     logger.info('Creating TODO item', { todo: JSON.parse(event.body) })
     try {
-      const data = JSON.parse(event.body)
-      const valid = ajv.validate(schema, data)
-      if (!valid) {
-        logger.error('VALIDATION', ajv.errors)
-        throw new Error(ajv.errors.toString())
-      }
-      const newTodo: CreateTodoRequest = data
+      const newTodo: CreateTodoRequest = JSON.parse(event.body)
 
       const userId = getUserId(event)
 
@@ -46,16 +39,3 @@ handler.use(
   })
 )
 
-const schema = {
-  type: 'object',
-  properties: {
-    name: {
-      type: 'string'
-    },
-    dueDate: {
-      type: 'string'
-    }
-  },
-  required: ['name', 'dueDate'],
-  additionalProperties: false
-}

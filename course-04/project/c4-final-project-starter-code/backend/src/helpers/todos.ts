@@ -8,8 +8,8 @@ import CustomError from '../utils/error';
 import { TodoUpdate } from '../models/TodoUpdate';
 import { getAttachmentUrl } from './attachmentUtils'
 
-// import * as createError from 'http-errors'
-// import { parseUserId } from '../auth/utils'
+import Ajv from 'ajv'
+const ajv = new Ajv()
 
 
 const todoAccess = new TodosAccess();
@@ -34,8 +34,12 @@ export async function createTodo(
   userId: string
 ): Promise<TodoItem> {
   const todoId = uuid.v4()
+  const valid = ajv.validate(createTodoSchema, createTodoRequest)
+  if (!valid) {
+    logger.error('VALIDATION', ajv.errors)
+    throw new CustomError(ajv.errors.toLocaleString(), 400)
+  }
   try {
-
     const todoItem: TodoItem = {
       todoId,
       userId,
@@ -58,6 +62,13 @@ export async function updateTodo(
   todoId: string,
   userId: string,
 ): Promise<TodoItem> {
+
+  const valid = ajv.validate(updateTodoSchema, updateTodo)
+  if (!valid) {
+    logger.error('VALIDATION', ajv.errors)
+    throw new CustomError(ajv.errors.toLocaleString(), 400)
+  }
+
   try {
 
     const item = await todoAccess.updateTodo(updateTodo as TodoUpdate, todoId, userId)
@@ -128,4 +139,39 @@ export async function updateAttachmentUrl(
     logger.error(error)
     throw new CustomError(error.message, 500)
   }
+}
+
+const createTodoSchema = {
+  type: 'object',
+  properties: {
+    name: {
+      type: 'string'
+    },
+    dueDate: {
+      type: 'string'
+    }
+  },
+  required: ['name', 'dueDate'],
+  additionalProperties: false
+}
+
+const updateTodoSchema = {
+  type: 'object',
+  properties: {
+    name: {
+      type: "string"
+    },
+    dueDate: {
+      type: "string"
+    },
+    done: {
+      type: "boolean"
+    }
+  },
+  required: [
+    "name",
+    "dueDate",
+    "done"
+  ],
+  additionalProperties: false
 }
