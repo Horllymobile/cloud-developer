@@ -66,12 +66,12 @@ custom:
         version: v1.0.0
         title: Udagram API
         description: Serverless application for todos
-    
+
     models:
       - name: CreateTodoModel
         contentType: application/json
         schema: ${file(models/create-todo-model.json)}
-      
+
       - name: UpdateTodoModel
         contentType: application/json
         schema: ${file(models/update-todo-model.json)}
@@ -88,6 +88,7 @@ functions:
           path: todos
           cors: true
           authorizer: Auth
+          reqValidatorName: "RequestBodyValidator"
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -111,12 +112,12 @@ functions:
           path: todos
           cors: true
           authorizer: Auth
-          reqValidatorName: RequestBodyValidator
+          reqValidatorName: "RequestBodyValidator"
           documentation:
             summary: Create todo
             description: Create tod
             requestModels:
-              'application/json': CreateTodoModel
+              "application/json": CreateTodoModel
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -132,12 +133,12 @@ functions:
           path: todos/{todoId}
           cors: true
           authorizer: Auth
-          reqValidatorName: RequestBodyValidator
+          reqValidatorName: "RequestBodyValidator"
           documentation:
             summary: Update todo
             description: Update todo
             requestModels:
-              'application/json': UpdateTodoModel
+              "application/json": UpdateTodoModel
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -195,7 +196,7 @@ resources:
           Ref: ApiGatewayRestApi
 
     RequestBodyValidator:
-      Type: AWS::ApiGateway::RequestValidator
+      Type: "AWS::ApiGateway::RequestValidator"
       Properties:
         Name: "request-body-validator"
         RestApiId:
