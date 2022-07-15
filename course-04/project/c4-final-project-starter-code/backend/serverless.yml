@@ -6,8 +6,8 @@ plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
   - serverless-plugin-tracing
-  - serverless-aws-documentation
   - serverless-reqvalidator-plugin
+  - serverless-aws-documentation
 
 provider:
   name: aws
@@ -112,10 +112,11 @@ functions:
           cors: true
           authorizer: Auth
           reqValidatorName: RequestBodyValidator
-          requestBody:
-              description: Create todo
-          requestModels:
-              application/json: CreateTodoModel
+          documentation:
+            summary: Create todo
+            description: Create tod
+            requestModels:
+              'application/json': CreateTodoModel
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
@@ -132,10 +133,11 @@ functions:
           cors: true
           authorizer: Auth
           reqValidatorName: RequestBodyValidator
-          requestBody:
-              description: Update todo
-          requestModels:
-              application/json: UpdateTodoModel
+          documentation:
+            summary: Update todo
+            description: Update todo
+            requestModels:
+              'application/json': UpdateTodoModel
     iamRoleStatementsInherit: true
     iamRoleStatements:
       - Effect: Allow
