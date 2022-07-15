@@ -9,6 +9,7 @@
     "aws-xray-sdk": "^2.2.0",
     "axios": "^0.27.2",
     "http-errors": "^1.7.2",
+    "joi": "^17.6.0",
     "jose": "^4.8.3",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^2.1.4",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.17",
+    "@types/joi": "^17.2.3",
     "@types/jsonwebtoken": "^8.3.2",
     "@types/node": "^10.14.4",
     "aws-sdk": "^2.1174.0",

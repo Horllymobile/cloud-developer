@@ -7,9 +7,7 @@ import * as uuid from 'uuid'
 import CustomError from '../utils/error';
 import { TodoUpdate } from '../models/TodoUpdate';
 import { getAttachmentUrl } from './attachmentUtils'
-
-import Ajv from 'ajv'
-const ajv = new Ajv()
+import * as Joi from 'joi'
 
 
 const todoAccess = new TodosAccess();
@@ -34,10 +32,10 @@ export async function createTodo(
   userId: string
 ): Promise<TodoItem> {
   const todoId = uuid.v4()
-  const valid = ajv.validate(createTodoSchema, createTodoRequest)
-  if (!valid) {
-    logger.error('VALIDATION', ajv.errors)
-    throw new CustomError(ajv.errors.toLocaleString(), 400)
+  const valid = createTodoSchema.validate(createTodoRequest);
+  if (valid.error) {
+    logger.error('VALIDATION ERROR', valid.error)
+    throw new CustomError(valid.error.message, 400)
   }
   try {
     const todoItem: TodoItem = {
@@ -58,20 +56,20 @@ export async function createTodo(
 }
 
 export async function updateTodo(
-  updateTodo: UpdateTodoRequest,
+  updateTodoRequest: UpdateTodoRequest,
   todoId: string,
   userId: string,
 ): Promise<TodoItem> {
 
-  const valid = ajv.validate(updateTodoSchema, updateTodo)
-  if (!valid) {
-    logger.error('VALIDATION', ajv.errors)
-    throw new CustomError(ajv.errors.toLocaleString(), 400)
+  const valid = updateTodoSchema.validate(updateTodoRequest);
+  if (valid.error) {
+    logger.error('VALIDATION ERROR', valid.error)
+    throw new CustomError(valid.error.message, 400)
   }
 
   try {
 
-    const item = await todoAccess.updateTodo(updateTodo as TodoUpdate, todoId, userId)
+    const item = await todoAccess.updateTodo(updateTodoRequest as TodoUpdate, todoId, userId)
 
     logger.info('TODO updated successfully', {
       userId,
@@ -141,37 +139,14 @@ export async function updateAttachmentUrl(
   }
 }
 
-const createTodoSchema = {
-  type: 'object',
-  properties: {
-    name: {
-      type: 'string'
-    },
-    dueDate: {
-      type: 'string'
-    }
-  },
-  required: ['name', 'dueDate'],
-  additionalProperties: false
-}
+const createTodoSchema = Joi.object({
+  name: Joi.string().required(),
+  dueDate: Joi.string().required()
+})
 
-const updateTodoSchema = {
-  type: 'object',
-  properties: {
-    name: {
-      type: "string"
-    },
-    dueDate: {
-      type: "string"
-    },
-    done: {
-      type: "boolean"
-    }
-  },
-  required: [
-    "name",
-    "dueDate",
-    "done"
-  ],
-  additionalProperties: false
-}
+const updateTodoSchema = Joi.object({
+  name: Joi.string().required(),
+  dueDate: Joi.string().required(),
+  done: Joi.boolean().required()
+})
+
