@@ -25,7 +25,7 @@ export const handler = middy(
       }
 
     } catch (error) {
-      logger.error('Error: ', error)
+      logger.error('Error: ', error.message)
       throw new Error(error);
     }
   }

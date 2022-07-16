@@ -15,9 +15,8 @@ export const handler = middy(
   async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
     logger.info('Updatting TODO item', { todo: event.body })
     try {
-      const data = JSON.parse(event.body)
-      const updatedTodo: UpdateTodoRequest = data
-      const todoId = event.pathParameters.todoId
+      const updatedTodo: UpdateTodoRequest = JSON.parse(event.body)
+      const todoId = event.pathParameters.todoId;
       const userId = getUserId(event)
       await updateTodo(updatedTodo, todoId, userId)
       return {
@@ -25,7 +24,7 @@ export const handler = middy(
         body: JSON.stringify({})
       }
     } catch (error) {
-      logger.error('Error: ', error)
+      logger.error('Error: ', error.message)
       throw new Error(error)
     }
   }
