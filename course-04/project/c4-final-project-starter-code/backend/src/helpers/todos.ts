@@ -145,8 +145,8 @@ const createTodoSchema = Joi.object({
 })
 
 const updateTodoSchema = Joi.object({
-  name: Joi.string(),
-  dueDate: Joi.string(),
-  done: Joi.boolean()
+  name: Joi.string().required(),
+  dueDate: Joi.string().required(),
+  done: Joi.boolean().required()
 })
 
